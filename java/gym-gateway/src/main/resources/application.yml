@@ -1,0 +1,66 @@
+server:
+  port: ${GATEWAY_PORT:5555}
+
+spring:
+
+  application:
+    name: gym-gateway
+
+  cloud:
+
+    gateway:
+
+      server:
+
+        webflux:
+
+          globalcors:
+
+            add-to-simple-url-handler-mapping: true
+
+            cors-configurations:
+
+              '[/**]':
+
+                allowedOriginPatterns:
+                  - "*"
+
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+
+                allowedHeaders:
+                  - "*"
+
+                allowCredentials: true
+
+          routes:
+
+            - id: gym-upload
+              uri: ${GYM_UPLOAD_URL}
+              predicates:
+                - Path=/api/uploads,/api/uploads/**,/api/arquivos,/api/arquivos/**,/api/pessoas,/api/pessoas/**
+
+            - id: user-control
+              uri: ${USER_CONTROL_URL}
+              predicates:
+                - Path=/api/auth,/api/auth/**,/api/users,/api/users/**
+
+            - id: search-result
+              uri: ${SEARCH_RESULT_URL}
+              predicates:
+                - Path=/api/resultados,/api/resultados/**
+
+  security:
+
+    oauth2:
+
+      resourceserver:
+
+        jwt:
+
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}

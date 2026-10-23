@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: SearchResult
+
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://admin:admin123@localhost:27017/gym?authSource=admin}
+
+server:
+  port: ${SEARCH_RESULT_PORT:8096}
+
+management:
+  endpoints:
+        web:
+          exposure:
+            include: health,info
+
+  endpoint:
+    health:
+       show-details: always

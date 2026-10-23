@@ -1,0 +1,61 @@
+spring:
+
+  application:
+    name: video-consumer
+  mongodb:
+    uri: mongodb://admin:admin123@localhost:27017/gym?authSource=admin
+
+  kafka:
+
+    bootstrap-servers: localhost:9092
+
+    consumer:
+
+      group-id: video-consumer
+
+      auto-offset-reset:
+        earliest
+
+      enable-auto-commit:
+        false
+
+      key-deserializer:
+        org.apache.kafka.common.serialization.StringDeserializer
+
+      value-deserializer:
+        org.springframework.kafka.support.serializer.JsonDeserializer
+
+      properties:
+
+        spring.json.trusted.packages:
+          "*"
+
+        spring.json.use.type.headers:
+          false
+
+        spring.json.value.default.type:
+          com.gym.video.consumer.dto.VideoUploadedEvent
+
+    listener:
+
+      ack-mode:
+        manual-immediate
+
+
+kafka:
+
+  topics:
+
+    video-uploaded: video-uploaded
+
+services:
+   video-processor:
+       url: http://localhost:8001
+       uri: /api/exercicios/processar
+   gym-upload:
+       url: http://localhost:8090
+       delete-video-uri: /api/arquivos/processamento 
+
+server:
+  port: 8096
+

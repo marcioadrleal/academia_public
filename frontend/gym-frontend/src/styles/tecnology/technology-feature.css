@@ -1,0 +1,42 @@
+.technology-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.technology-feature-icon {
+  width: 44px;
+  height: 44px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 11px;
+
+  background: rgba(30, 208, 130, 0.12);
+  color: #36dd94;
+}
+
+.technology-feature-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.technology-feature-content strong {
+  color: #ffffff;
+
+  font-size: 14px;
+}
+
+.technology-feature-content span {
+  max-width: 450px;
+
+  color: #93a69e;
+
+  font-size: 12px;
+  line-height: 1.6;
+}

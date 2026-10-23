@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: =UserControl
+
+server:
+  port: 8089
+
+keycloak:
+  admin:
+    server-url: http://localhost:8080
+    realm: academia
+    client-id: gym-api
+    client-secret: TYY89jj^uersklq12sdssd
+
+services:
+   person:
+     url: http://localhost:8090

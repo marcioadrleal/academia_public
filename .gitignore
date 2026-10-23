@@ -1,0 +1,28 @@
+# Variáveis de ambiente
+.env
+**/.env
+.env.local
+.env.*
+**/.env.local
+
+# Dados locais
+infra/data/
+postgres_data/
+redis_data/
+kafka_data/
+minio_data/
+
+# Logs
+*.log
+logs/
+
+# Go
+bin/
+dist/
+*.test
+*.out
+.coverprofile
+
+# IDE
+.vscode/
+.idea/

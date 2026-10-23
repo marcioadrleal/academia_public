@@ -1,0 +1,50 @@
+.features-section {
+  padding: 20px 0;
+}
+
+.section-heading {
+  max-width: 680px;
+  margin-bottom: 36px;
+}
+
+.section-label {
+  display: inline-block;
+  margin-bottom: 10px;
+
+  color: #16af69;
+
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.section-heading h2 {
+  margin: 0;
+
+  color: #14231d;
+
+  font-size: 34px;
+  line-height: 1.2;
+  letter-spacing: -1.2px;
+}
+
+.section-heading p {
+  margin-top: 14px;
+
+  color: #7d8b85;
+
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+
+@media (max-width: 850px) {
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+}

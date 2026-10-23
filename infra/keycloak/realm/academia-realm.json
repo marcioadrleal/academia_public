@@ -1,0 +1,62 @@
+{
+  "realm": "academia",
+  "enabled": true,
+  "displayName": "Academia",
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false, 
+  "roles": {
+    "realm": [
+      {
+        "name": "ADMIN",
+        "description": "Administrador do sistema"
+      },
+      {
+        "name": "USER",
+        "description": "Usuário da aplicação"
+      }
+    ]
+  },
+
+  "clients": [
+    {
+      "clientId": "gym-api",
+      "name": "Gym API",
+      "enabled": true,
+
+      "protocol": "openid-connect",
+
+      "publicClient": false,
+      "secret": "TYY89jj^uersklq12sdssd",
+
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+
+      "redirectUris": [
+        "http://localhost:*/*"
+      ],
+
+      "webOrigins": [
+        "http://localhost:*"
+      ]
+    }
+  ],
+
+  "users": [
+    {
+      "username": "service-account-gym-api",
+      "enabled": true,
+      "serviceAccountClientId": "gym-api",
+
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "query-users",
+          "view-users",
+          "query-groups",
+          "manage-realm"
+        ]
+      }
+    }
+  ]
+}

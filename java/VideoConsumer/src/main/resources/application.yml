@@ -1,0 +1,48 @@
+spring:
+
+  application:
+    name: video-consumer
+
+  mongodb:
+      uri: ${MONGODB_URI}
+
+  kafka:
+
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+
+      key-deserializer:
+        org.apache.kafka.common.serialization.StringDeserializer
+
+      value-deserializer:
+        org.springframework.kafka.support.serializer.JsonDeserializer
+
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type:
+          com.gym.video.consumer.dto.VideoUploadedEvent
+
+    listener:
+      ack-mode: manual-immediate
+
+
+kafka:
+  topics:
+    video-uploaded: ${KAFKA_TOPIC_UPLOAD}
+
+
+services:
+  video-processor:
+    url: ${VIDEO_PROCESSOR_URL}
+    uri: ${VIDEO_PROCESSOR_URI}
+  gym-upload:
+    url: ${GYM_UPLOAD_URL}
+    delete-video-uri: ${GYM_UPLOAD_DELETE_VIDEO_URI}
+
+server:
+  port: ${CONSUMER_KAFKA_PORT}

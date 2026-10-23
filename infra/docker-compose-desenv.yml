@@ -1,0 +1,753 @@
+services:
+
+  # =========================================================
+  # POSTGRESQL PRINCIPAL
+  # Interno: postgres:5432
+  # =========================================================
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg17
+    container_name: academia-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    expose:
+      - "5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # REDIS
+  # Interno: redis:6379
+  # =========================================================
+  redis:
+    image: redis:8.2.8-alpine
+    container_name: academia-redis
+    restart: unless-stopped
+
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${REDIS_PASSWORD}
+
+    expose:
+      - "6379"
+
+    volumes:
+      - redis_data:/data
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "-a",
+          "${REDIS_PASSWORD}",
+          "ping"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # KAFKA
+  # Somente interno
+  # Broker: kafka:29092
+  # Controller: kafka:29093
+  # =========================================================
+  kafka:
+    image: apache/kafka:4.1.2
+    container_name: academia-kafka
+    restart: unless-stopped
+
+    expose:
+      - "29092"
+      - "29093"
+
+    environment:
+
+      KAFKA_NODE_ID: 1
+
+      KAFKA_PROCESS_ROLES: broker,controller
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: >
+        CONTROLLER:PLAINTEXT,
+        INTERNAL:PLAINTEXT
+
+      KAFKA_LISTENERS: >
+        INTERNAL://:29092,
+        CONTROLLER://:29093
+
+      KAFKA_ADVERTISED_LISTENERS: >
+        INTERNAL://kafka:29092
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      KAFKA_CONTROLLER_QUORUM_VOTERS: >
+        1@kafka:29093
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+      KAFKA_NUM_PARTITIONS: 3
+
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list > /dev/null 2>&1"
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # KAFKA UI
+  # Externo: http://localhost:8088
+  # =========================================================
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: academia-kafka-ui
+    restart: unless-stopped
+
+    ports:
+      - "8088:8080"
+
+    environment:
+      KAFKA_CLUSTERS_0_NAME: academia
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # MINIO
+  # API interna: minio:9000
+  # Console interno: minio:9001
+  # =========================================================
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: academia-minio
+    restart: unless-stopped
+
+    command:
+      - server
+      - /data
+      - --console-address
+      - ":9001"
+
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+
+    expose:
+      - "9000"
+      - "9001"
+
+    volumes:
+      - minio_data:/data
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mc",
+          "ready",
+          "local"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # POSTGRESQL KEYCLOAK
+  # Interno: keycloak-postgres:5432
+  # =========================================================
+  keycloak-postgres:
+    image: postgres:17-alpine
+    container_name: academia-keycloak-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DB}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+
+    expose:
+      - "5432"
+
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${KEYCLOAK_DB_USER} -d ${KEYCLOAK_DB}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # KEYCLOAK
+  # Interno: http://keycloak:8080
+  # =========================================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.7
+    container_name: academia-keycloak
+    restart: unless-stopped
+
+    command:
+      - start-dev
+      - --import-realm
+
+    environment:
+
+      # Admin
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+
+      # Banco
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/${KEYCLOAK_DB}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+
+      # HTTP interno
+      KC_HTTP_ENABLED: "true"
+
+      # Hostname
+      KC_HOSTNAME: http://keycloak:8080
+
+      # Health
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_MANAGEMENT_HEALTH_ENABLED: "false"
+
+    expose:
+      - "8080"
+
+    volumes:
+      - ./keycloak/realm:/opt/keycloak/data/import:ro
+
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/127.0.0.1/8080; echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep '200 OK' <&3"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # PGADMIN
+  # Externo: http://localhost:5050
+  # =========================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: academia-pgadmin
+    restart: unless-stopped
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+
+    ports:
+      - "5050:80"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # GYM UPLOAD
+  # Interno: http://gym-upload:8090
+  # =========================================================
+  gym-upload:
+    build:
+      context: ../java/gymUpload
+      dockerfile: Dockerfile
+
+    container_name: academia-gym-upload
+    restart: unless-stopped
+
+    environment:
+
+      # PostgreSQL
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # MinIO
+      MINIO_URL: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: academia-videos
+
+      # Kafka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_CONSUMER_GROUP: video-consumer
+      KAFKA_TOPIC_UPLOAD: video-uploaded
+
+      # Server
+      GYM_UPLOAD_PORT: 8090
+
+    expose:
+      - "8090"
+
+    depends_on:
+
+      postgres:
+        condition: service_healthy
+
+      minio:
+        condition: service_healthy
+
+      kafka:
+        condition: service_healthy
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # USER CONTROL
+  # Interno: http://user-control:8089
+  # =========================================================
+  user-control:
+    build:
+      context: ../java/UserControl
+      dockerfile: Dockerfile
+
+    container_name: academia-user-control
+    restart: unless-stopped
+
+    environment:
+
+      # Keycloak
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_ADMIN_REALM}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+      # Serviço de pessoa
+      PERSON_SERVICE_URL: http://gym-upload:8090
+
+      # Server
+      USER_CONTROL_PORT: 8089
+
+    expose:
+      - "8089"
+
+    depends_on:
+
+      keycloak:
+        condition: service_healthy
+
+      gym-upload:
+        condition: service_started
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # MCP VIDEO
+  # Interno: http://mcp-video:8000
+  # =========================================================
+  mcp-video:
+    build:
+      context: ../python/mcp_video
+      dockerfile: Dockerfile
+
+    container_name: academia-mcp-video
+    restart: unless-stopped
+
+    environment:
+
+      ACADEMIA_API_URL: http://gym-upload:8090
+
+      MCP_PUBLIC_URL: http://mcp-video:8000
+
+      HTTP_TIMEOUT: 300
+
+    expose:
+      - "8000"
+
+    depends_on:
+      gym-upload:
+        condition: service_started
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # VIDEO PROCESSOR
+  # Interno: http://video-processor:8001
+  # =========================================================
+  video-processor:
+    build:
+      context: ../python/video_processor
+      dockerfile: Dockerfile
+
+    container_name: academia-video-processor
+    restart: unless-stopped
+
+    environment:
+
+      MCP_URI: http://mcp-video:8000
+
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+      OPENAI_MODEL: gpt-4o-mini
+
+      LLM_PROVIDER: OPENAI
+
+    expose:
+      - "8001"
+
+    depends_on:
+      mcp-video:
+        condition: service_started
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # MONGODB
+  # Interno: mongodb:27017
+  # =========================================================
+  mongodb:
+    image: mongo:8.0
+    container_name: academia-mongodb
+    restart: unless-stopped
+
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
+
+    ports:
+      - "27017:27017"
+
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongodb/init:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --eval \"db.adminCommand('ping').ok\" --username ${MONGO_ROOT_USERNAME} --password ${MONGO_ROOT_PASSWORD} --authenticationDatabase admin | grep 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # MONGO EXPRESS
+  # Externo: http://localhost:8082
+  # =========================================================
+  mongo-express:
+    image: mongo-express
+    container_name: academia-mongo-express
+    restart: unless-stopped
+
+    environment:
+
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/?authSource=admin
+
+      ME_CONFIG_BASICAUTH_ENABLED: "true"
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USERNAME}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD}
+
+    ports:
+      - "8082:8081"
+
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # VIDEO CONSUMER
+  # Interno: video-consumer:8095
+  # =========================================================
+  video-consumer:
+    build:
+      context: ../java/VideoConsumer
+      dockerfile: Dockerfile
+
+    container_name: academia-video-consumer
+    restart: unless-stopped
+
+    environment:
+
+      # =====================================================
+      # Gym Upload
+      # =====================================================
+      GYM_UPLOAD_URL: http://gym-upload:8090
+      GYM_UPLOAD_DELETE_VIDEO_URI: /api/arquivos/processamento
+
+      # =====================================================
+      # MongoDB
+      # =====================================================
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DATABASE}?authSource=admin
+
+      # =====================================================
+      # Kafka
+      # =====================================================
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_CONSUMER_GROUP: video-consumer
+      KAFKA_TOPIC_UPLOAD: video-uploaded
+
+      # =====================================================
+      # Video Processor
+      # =====================================================
+      VIDEO_PROCESSOR_URL: http://video-processor:8001
+      VIDEO_PROCESSOR_URI: /api/exercicios/processar
+
+      # =====================================================
+      # Server
+      # =====================================================
+      CONSUMER_KAFKA_PORT: 8095
+
+    expose:
+      - "8095"
+
+    depends_on:
+
+      kafka:
+        condition: service_healthy
+
+      mongodb:
+        condition: service_healthy
+
+      video-processor:
+        condition: service_started
+
+    networks:
+      - academia-network
+
+
+  # =========================================================
+  # GYM GATEWAY
+  # Externo: http://localhost:5555
+  #
+  # Por enquanto fica exposto diretamente.
+  # Futuramente o Nginx ficará na frente dele.
+  # =========================================================
+  gym-gateway:
+    build:
+      context: ../java/gym-gateway
+      dockerfile: Dockerfile
+
+    container_name: academia-gym-gateway
+    restart: unless-stopped
+
+    environment:
+
+      GYM_UPLOAD_URL: http://gym-upload:8090
+
+      USER_CONTROL_URL: http://user-control:8089
+
+      SEARCH_RESULT_URL: http://search-result:8096
+
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/academia
+
+      GATEWAY_PORT: 5555
+
+      SSL_HOST: ${SSL_HOST}
+
+      SSL_KEY_STORE: file:/app/certs/gym-gateway.p12
+
+      SSL_KEY_STORE_PASSWORD: ${GATEWAY_SSL_PASSWORD}
+
+      SSL_KEY_ALIAS: gym-gateway
+
+    ports:
+      - "5555:5555"
+
+    volumes:
+      - gateway-certs:/app/certs
+
+    depends_on:
+
+      gym-upload:
+        condition: service_started
+
+      user-control:
+        condition: service_started
+
+      keycloak:
+        condition: service_healthy
+
+    networks:
+      - academia-network
+
+  search-result:
+    build:
+      context: ../java/SearchResult
+      dockerfile: Dockerfile
+
+    container_name: academia-search-result
+    restart: unless-stopped
+
+    environment:
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DATABASE}?authSource=admin
+      SEARCH_RESULT_PORT: 8096
+
+    expose:
+      - "8096"
+
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+    networks:
+      - academia-network
+
+  # =========================================================
+  # GYM FRONTEND
+  # Externo: http://localhost:5173
+  # Interno: http://gym-frontend:80
+  # =========================================================
+  gym-frontend:
+    build:
+      context: ../frontend/gym-frontend
+      dockerfile: Dockerfile
+
+    container_name: academia-gym-frontend
+    restart: unless-stopped
+
+    ports:
+      - "5173:80"
+
+    depends_on:
+      gym-gateway:
+        condition: service_started
+
+    networks:
+      - academia-network    
+
+# =========================================================
+# VOLUMES
+# =========================================================
+volumes:
+
+  postgres_data:
+    name: academia-postgres-data
+
+  redis_data:
+    name: academia-redis-data
+
+  kafka_data:
+    name: academia-kafka-data
+
+  minio_data:
+    name: academia-minio-data
+
+  keycloak_postgres_data:
+    name: academia-keycloak-postgres-data
+
+  pgadmin_data:
+    name: academia-pgadmin-data
+
+  mongodb_data:
+    name: academia-mongodb-data
+
+  gateway-certs:
+    name: academia-gateway-certs  
+
+
+# =========================================================
+# NETWORK
+# =========================================================
+networks:
+
+  academia-network:
+    name: academia-network
+    driver: bridge

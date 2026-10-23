@@ -1,0 +1,73 @@
+.how-it-works-card {
+  position: relative;
+
+  min-height: 270px;
+
+  padding: 30px;
+
+  border: 1px solid #e5ebe8;
+  border-radius: 18px;
+
+  background: #ffffff;
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.how-it-works-card:hover {
+  transform: translateY(-5px);
+
+  border-color: #cce9da;
+
+  box-shadow:
+    0 18px 40px
+    rgba(16, 55, 38, 0.08);
+}
+
+.how-it-works-number {
+  position: absolute;
+
+  top: 25px;
+  right: 28px;
+
+  color: #d9e0dc;
+
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.how-it-works-icon {
+  width: 52px;
+  height: 52px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 30px;
+
+  border-radius: 14px;
+
+  background: #e6faf1;
+  color: #10aa64;
+}
+
+.how-it-works-card h3 {
+  margin: 0 0 12px;
+
+  color: #182720;
+
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.how-it-works-card p {
+  margin: 0;
+
+  color: #7e8b85;
+
+  font-size: 13px;
+  line-height: 1.7;
+}

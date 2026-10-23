@@ -1,0 +1,32 @@
+server:
+  port: 5555
+
+spring:
+  application:
+    name: gym-gateway
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+
+            - id: gym-upload
+              uri: http://localhost:8090
+              predicates:
+                - Path=/api/uploads/**,/api/arquivos/**
+
+            - id: user-control
+              uri: http://localhost:8089
+              predicates:
+                - Path=/api/auth/**,/api/users/**
+
+            - id: search-result
+              uri: http://localhost:8086
+              predicates:
+                - Path=/api/resultados/**
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/academia

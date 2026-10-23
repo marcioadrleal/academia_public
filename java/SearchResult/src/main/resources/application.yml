@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: SearchResult
+
+  mongodb:
+    uri: ${MONGODB_URI}
+
+server:
+  port: ${SEARCH_RESULT_PORT}
+

@@ -1,0 +1,21 @@
+spring:
+  servlet:
+      multipart:
+         max-file-size: 50MB
+         max-request-size: 51MB
+  config:
+    import: optional:file:../../infra/.env[.properties]
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB}
+
+  kafka:
+    bootstrap-servers: localhost:9092
+minio:
+  url: http://localhost:9000
+
+server:
+  port: 8091
+
+topic:
+  kafka: video-uploaded
